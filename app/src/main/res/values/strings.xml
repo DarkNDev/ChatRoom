@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">ChatRoom</string>
+    <string name="username">Username</string>
+    <string name="join">Join</string>
+    <string name="message">Message</string>
+    <string name="send_description">Send Message</string>
+    <string name="enter_description">Enter Chat Room</string>
+</resources>

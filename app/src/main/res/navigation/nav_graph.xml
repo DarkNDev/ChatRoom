@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph.xml"
+    app:startDestination="@id/loginFragment">
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.darkndev.chatroom.ui.login.LoginFragment"
+        android:label="Welcome to Chat Room" >
+        <action
+            android:id="@+id/action_loginFragment_to_chatFragment"
+            app:destination="@id/chatFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/chatFragment"
+        android:name="com.darkndev.chatroom.ui.chatroom.ChatFragment"
+        android:label="Chat Room" >
+        <argument
+            android:name="username"
+            app:argType="string" />
+    </fragment>
+</navigation>
