@@ -4,18 +4,17 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import com.darkndev.chatroom.data.ChatApi
+import com.darkndev.chatroom.data.Database
 import com.darkndev.chatroom.models.Chatroom
-import com.darkndev.chatroom.models.Message
 import com.darkndev.chatroom.utils.Connection
 import com.darkndev.chatroom.utils.NetworkConnectivityObserver
 import com.darkndev.chatroom.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -27,9 +26,12 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatApi: ChatApi,
+    private val database: Database,
     private val state: SavedStateHandle,
     networkConnectivityObserver: NetworkConnectivityObserver
 ) : ViewModel() {
+
+    private val messageDao = database.messageDao()
 
     val username = state.get<String>("username")!!
 
@@ -39,26 +41,37 @@ class ChatViewModel @Inject constructor(
             state["MESSAGE"] = value
         }
 
-    private val _messages = MutableStateFlow(listOf<Message>())
-    val messages = _messages.asLiveData(viewModelScope.coroutineContext)
-
-    private val _chatroom = MutableStateFlow(Chatroom())
-    val chatroom = _chatroom.asStateFlow()
+    val messages = messageDao.getAllMessages().asLiveData(viewModelScope.coroutineContext)
 
     private val networkObserver = networkConnectivityObserver.observe()
-        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     init {
         viewModelScope.launch {
             networkObserver.collectLatest { connection ->
                 connection ?: return@collectLatest
-                _chatroom.value = _chatroom.value.copy(loading = true, roomConnected = false)
+                channel.send(
+                    Event.Status(
+                        Chatroom(
+                            message = null,
+                            loading = true,
+                            roomConnected = false
+                        )
+                    )
+                )
                 if (connection == Connection.Available) {
-                    delay(5000)
+                    delay(2000)
                     getAllMessages()
                 } else {
-                    _chatroom.value = _chatroom.value.copy(loading = false, roomConnected = false)
-                    channel.send(Event.ShowMessage("Check Internet Connection"))
+                    channel.send(
+                        Event.Status(
+                            Chatroom(
+                                message = "Check Internet Connection",
+                                loading = false,
+                                roomConnected = false
+                            )
+                        )
+                    )
                 }
             }
         }
@@ -67,12 +80,24 @@ class ChatViewModel @Inject constructor(
     private suspend fun getAllMessages() {
         when (val result = chatApi.getAllMessages()) {
             is Resource.Error -> {
-                _chatroom.value = _chatroom.value.copy(loading = false, roomConnected = false)
-                channel.send(Event.ShowMessage("Error Retrieving Messages"))
+                channel.send(
+                    Event.Status(
+                        Chatroom(
+                            message = "Error Retrieving Messages",
+                            loading = false,
+                            roomConnected = false
+                        )
+                    )
+                )
             }
 
             is Resource.Success -> {
-                _messages.value = result.data!!
+                result.data?.let {
+                    database.withTransaction {
+                        messageDao.deleteAll()
+                        messageDao.insertAll(*it.toTypedArray())
+                    }
+                }
                 initialiseSession()
             }
         }
@@ -81,18 +106,30 @@ class ChatViewModel @Inject constructor(
     private suspend fun initialiseSession() {
         when (chatApi.initSession(username)) {
             is Resource.Error -> {
-                _chatroom.value = _chatroom.value.copy(loading = false, roomConnected = false)
-                channel.send(Event.ShowMessage("Error Joining Chatroom"))
+                channel.send(
+                    Event.Status(
+                        Chatroom(
+                            message = "Error Joining Chatroom",
+                            loading = false,
+                            roomConnected = false
+                        )
+                    )
+                )
             }
 
             is Resource.Success -> {
-                _chatroom.value = _chatroom.value.copy(loading = false, roomConnected = true)
+                channel.send(
+                    Event.Status(
+                        Chatroom(
+                            message = null,
+                            loading = false,
+                            roomConnected = true
+                        )
+                    )
+                )
                 chatApi.observeMessages()
                     .onEach { message ->
-                        val newList = _messages.value.toMutableList().apply {
-                            add(message)
-                        }
-                        _messages.value = newList
+                        messageDao.insertAll(message)
                     }.launchIn(viewModelScope)
             }
         }
@@ -100,7 +137,15 @@ class ChatViewModel @Inject constructor(
 
     private fun disconnectFromChat() = viewModelScope.launch {
         chatApi.closeSession()
-        _chatroom.value = _chatroom.value.copy(loading = false, roomConnected = false)
+        channel.send(
+            Event.Status(
+                Chatroom(
+                    message = null,
+                    loading = false,
+                    roomConnected = false
+                )
+            )
+        )
     }
 
     override fun onCleared() {
@@ -114,7 +159,7 @@ class ChatViewModel @Inject constructor(
     }
 
     sealed class Event {
-        data class ShowMessage(val message: String) : Event()
+        data class Status(val chatroom: Chatroom) : Event()
     }
 
     private val channel = Channel<Event>()

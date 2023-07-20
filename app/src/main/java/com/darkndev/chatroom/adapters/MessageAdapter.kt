@@ -60,7 +60,7 @@ class MessageAdapter(private val user: String) :
             binding.apply {
                 username.text = message.username
                 incomingMessage.text = message.text
-                timestamp.text = message.formattedTime
+                timestamp.text = message.toTime()
             }
         }
     }
@@ -71,7 +71,7 @@ class MessageAdapter(private val user: String) :
         fun bind(message: Message) {
             binding.apply {
                 outgoingMessage.text = message.text
-                timestamp.text = message.formattedTime
+                timestamp.text = message.toTime()
             }
         }
     }

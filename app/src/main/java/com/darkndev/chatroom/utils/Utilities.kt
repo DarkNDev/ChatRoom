@@ -7,6 +7,11 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.websocket.WebSocketSession
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 inline fun <T> httpResponse(
     request: () -> HttpResponse,
@@ -40,4 +45,25 @@ inline fun <T> socketResponse(
     socket(request())
 } catch (e: Exception) {
     error(e)
+}
+
+fun getFormatTime(modifiedMillis: Long): String {
+    val modified =
+        ZonedDateTime.ofInstant(
+            Instant.ofEpochMilli(modifiedMillis),
+            ZoneId.systemDefault()
+        )
+    val now = ZonedDateTime.now()
+
+    return if (modified.year != now.year) {
+        modified.year.toString()
+    } else if (modified.dayOfYear != now.dayOfYear) {
+        DateTimeFormatter
+            .ofPattern("MMM d", Locale.US)
+            .format(modified)
+    } else {
+        DateTimeFormatter
+            .ofPattern("h:mm a", Locale.US)
+            .format(modified)
+    }
 }

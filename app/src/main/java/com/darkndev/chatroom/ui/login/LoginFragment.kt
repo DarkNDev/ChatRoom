@@ -35,7 +35,7 @@ class LoginFragment : Fragment() {
         binding.apply {
             signInUsername.setText(viewModel.usernameText)
             signInUsername.doAfterTextChanged {
-                viewModel.usernameText = it.toString()
+                viewModel.usernameText = it.toString().trim()
             }
 
             signInUsernameLayout.setEndIconOnClickListener {

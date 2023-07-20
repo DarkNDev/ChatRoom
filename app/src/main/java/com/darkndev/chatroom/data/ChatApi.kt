@@ -1,7 +1,6 @@
 package com.darkndev.chatroom.data
 
 import com.darkndev.chatroom.models.Message
-import com.darkndev.chatroom.models.MessageDto
 import com.darkndev.chatroom.utils.Resource
 import com.darkndev.chatroom.utils.Urls.CHAT
 import com.darkndev.chatroom.utils.Urls.MESSAGES
@@ -39,8 +38,7 @@ class ChatApi @Inject constructor(
             }
         },
         success = { response ->
-            val messages = response.body<List<MessageDto>>()
-                .map { it.toMessage() }
+            val messages = response.body<List<Message>>()
             Resource.Success(messages)
         },
         error = { _, _, e ->
@@ -83,8 +81,7 @@ class ChatApi @Inject constructor(
             ?.filter { it is Frame.Text }
             ?.map {
                 val json = (it as? Frame.Text)?.readText() ?: ""
-                val messageDto = Json.decodeFromString<MessageDto>(json)
-                messageDto.toMessage()
+                Json.decodeFromString(json)
             } ?: flow { }
     } catch (e: Exception) {
         e.printStackTrace()

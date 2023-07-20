@@ -31,16 +31,6 @@ class ChatFragment : Fragment() {
     ): View {
         _binding = FragmentChatBinding.inflate(inflater, container, false)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.receive.collectLatest {
-                when (it) {
-                    is ChatViewModel.Event.ShowMessage -> {
-                        Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-
         val messageAdapter = MessageAdapter(viewModel.username)
 
         binding.apply {
@@ -66,25 +56,22 @@ class ChatFragment : Fragment() {
             }
 
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.chatroom.collectLatest { chatroom ->
-                    if (chatroom.loading) progress.show() else progress.hide()
-                    messageLayout.isEnabled = chatroom.roomConnected
+                viewModel.receive.collectLatest { event ->
+                    when (event) {
+                        is ChatViewModel.Event.Status -> {
+                            event.chatroom.message?.let {
+                                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                            }
+                            if (event.chatroom.loading) progress.show() else progress.hide()
+                            messageLayout.isEnabled = event.chatroom.roomConnected
+                        }
+                    }
                 }
             }
         }
 
         return binding.root
     }
-
-    /*override fun onStart() {
-        super.onStart()
-        viewModel.connectToChat()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        viewModel.disconnectFromChat()
-    }*/
 
     override fun onDestroyView() {
         super.onDestroyView()
