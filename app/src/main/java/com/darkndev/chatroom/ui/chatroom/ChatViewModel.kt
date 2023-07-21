@@ -7,11 +7,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.darkndev.chatroom.data.ChatApi
 import com.darkndev.chatroom.data.Database
+import com.darkndev.chatroom.di.ApplicationScope
 import com.darkndev.chatroom.models.Chatroom
 import com.darkndev.chatroom.utils.Connection
 import com.darkndev.chatroom.utils.NetworkConnectivityObserver
 import com.darkndev.chatroom.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +30,8 @@ class ChatViewModel @Inject constructor(
     private val chatApi: ChatApi,
     private val database: Database,
     private val state: SavedStateHandle,
-    networkConnectivityObserver: NetworkConnectivityObserver
+    networkConnectivityObserver: NetworkConnectivityObserver,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) : ViewModel() {
 
     private val messageDao = database.messageDao()
@@ -62,6 +65,7 @@ class ChatViewModel @Inject constructor(
                 if (connection == Connection.Available) {
                     delay(2000)
                     getAllMessages()
+                    initialiseSession()
                 } else {
                     channel.send(
                         Event.Status(
@@ -98,7 +102,6 @@ class ChatViewModel @Inject constructor(
                         messageDao.insertAll(*it.toTypedArray())
                     }
                 }
-                initialiseSession()
             }
         }
     }
@@ -135,7 +138,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun disconnectFromChat() = viewModelScope.launch {
+    private fun disconnectFromChat() = applicationScope.launch {
         chatApi.closeSession()
         channel.send(
             Event.Status(

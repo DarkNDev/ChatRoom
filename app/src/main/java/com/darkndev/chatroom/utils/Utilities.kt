@@ -4,9 +4,9 @@ import android.util.Log
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.RedirectResponseException
 import io.ktor.client.plugins.ServerResponseException
+import io.ktor.client.plugins.websocket.ClientWebSocketSession
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
-import io.ktor.websocket.WebSocketSession
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -38,8 +38,8 @@ inline fun <T> httpResponse(
 }
 
 inline fun <T> socketResponse(
-    request: () -> WebSocketSession,
-    socket: (WebSocketSession) -> T,
+    request: () -> ClientWebSocketSession,
+    socket: (ClientWebSocketSession) -> T,
     error: (Throwable) -> T
 ) = try {
     socket(request())

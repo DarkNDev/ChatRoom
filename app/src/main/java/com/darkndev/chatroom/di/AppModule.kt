@@ -14,7 +14,11 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 
 @Module
@@ -31,7 +35,9 @@ object AppModule {
         install(ContentNegotiation) {
             json()
         }
-        install(WebSockets)
+        install(WebSockets){
+            contentConverter = KotlinxWebsocketSerializationConverter(Json)
+        }
     }
 
     @Singleton
@@ -47,4 +53,9 @@ object AppModule {
     @Singleton
     @Provides
     fun provideDao(database: Database) = database.messageDao()
+
+    @ApplicationScope
+    @Singleton
+    @Provides
+    fun provideApplicationScope() = CoroutineScope(SupervisorJob())
 }

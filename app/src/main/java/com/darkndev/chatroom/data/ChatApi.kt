@@ -8,14 +8,15 @@ import com.darkndev.chatroom.utils.httpResponse
 import com.darkndev.chatroom.utils.socketResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.websocket.ClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.url
 import io.ktor.websocket.Frame
-import io.ktor.websocket.WebSocketSession
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import io.ktor.websocket.send
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
@@ -29,7 +30,7 @@ class ChatApi @Inject constructor(
     private val client: HttpClient
 ) {
 
-    private var socket: WebSocketSession? = null
+    private var socket: ClientWebSocketSession? = null
 
     suspend fun getAllMessages(): Resource<List<Message>> = httpResponse(
         request = {
@@ -69,7 +70,7 @@ class ChatApi @Inject constructor(
 
     suspend fun sendMessage(message: String) {
         try {
-            socket?.send(Frame.Text(message))
+            socket?.send(message)
         } catch (e: Exception) {
             e.printStackTrace()
         }
